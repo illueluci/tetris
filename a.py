@@ -245,17 +245,30 @@ def clear_rows(grid, locked):
     return inc
 
 
-def score_from_clearing(number_of_cleared_lines):
-    if number_of_cleared_lines >= 4:   # tetris
-        return 800
-    elif number_of_cleared_lines == 3:  # triple
-        return 500
-    elif number_of_cleared_lines == 2:  # double
-        return 300
-    elif number_of_cleared_lines == 1: #single
-        return 100
-    else:
-        return 0
+def score_from_clearing(number_of_cleared_lines, tspin_bool):
+    temp_score = 0
+    if tspin_bool:
+        if number_of_cleared_lines >= 3:   # t-spin triple
+            temp_score += 1600
+        elif number_of_cleared_lines == 2:  # t-spin double
+            temp_score += 1200
+        elif number_of_cleared_lines == 1:  # t-spin single
+            temp_score += 800
+        else:                               # non-clearing t-spin
+            temp_score += 400
+    else:  # not a t-spin
+        if number_of_cleared_lines >= 4:   # tetris
+            temp_score += 800
+        elif number_of_cleared_lines == 3:  # triple
+            temp_score += 500
+        elif number_of_cleared_lines == 2:  # double
+            temp_score += 300
+        elif number_of_cleared_lines == 1: # single
+            temp_score += 100
+        else:
+            pass
+
+    return temp_score
 
 
 def draw_next_shape(shape: list, surface):
@@ -303,6 +316,9 @@ def draw_hold(shape, surface):
                                  (sx + j*block_size*0.7, sy + i*block_size*0.7, block_size*0.7, block_size*0.7), 0)
 
     surface.blit(label, (sx + 10, sy - 30))
+
+def draw_cleared_line_indicator():
+    pass
 
 
 def update_score(nscore):
@@ -380,6 +396,10 @@ def main(win):
     score = 0
     counting_before_locking = 0
 
+    is_tspin = False
+    btb_count = 0  # back to back
+    combo = 0
+
     while run:
         grid = create_grid(locked_positions)
         fall_time += clock.get_rawtime()
@@ -408,17 +428,18 @@ def main(win):
 
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_a:
-                    current_piece.x -= 1
+                    current_piece.x -= 1    # move left
                     if not (valid_space(current_piece, grid)):
                         current_piece.x += 1
-                if event.key == pygame.K_d:
+                if event.key == pygame.K_d:  # move right
                     current_piece.x += 1
                     if not (valid_space(current_piece, grid)):
                         current_piece.x -= 1
-                if event.key == pygame.K_s:
+                if event.key == pygame.K_s:  # soft drop
                     current_piece.y += 1
                     if not (valid_space(current_piece, grid)):
                         current_piece.y -= 1
+                        counting_before_locking = 4
                 if event.key == pygame.K_w:  # hard drop
                     while valid_space(current_piece, grid):
                         current_piece.y += 1
@@ -442,6 +463,7 @@ def main(win):
                     else:
                         if not was_holding:
                             held_piece, current_piece = current_piece, held_piece
+                            current_piece.x, current_piece.y = 5, 0
                             was_holding = True
 
 
@@ -453,19 +475,45 @@ def main(win):
                 grid[y][x] = current_piece.color
 
         if change_piece:
+            tspin_corner_count = 0
+            if current_piece.shape == T:
+                if current_piece.rotation % 4 == 1 or current_piece.rotation % 4 == 2:  # looking for the center block
+                    center_x, center_y = shape_pos[1]  # unpack first
+                    for xxx in range(-1,2,2):
+                        for yyy in range(-1,2,2):
+                            try:
+                                if grid[center_y + yyy][center_x + xxx] != (0,0,0):
+                                    tspin_corner_count += 1
+                            except IndexError:
+                                pass
+                elif current_piece.rotation % 4 == 0 or current_piece.rotation % 4 == 3:
+                    center_x, center_y = shape_pos[2]
+                    for xxx in range(-1,2,2):
+                        for yyy in range(-1,2,2):
+                            try:
+                                if grid[center_y + yyy][center_x + xxx] != (0,0,0):
+                                    tspin_corner_count += 1
+                            except IndexError:
+                                pass
+            if tspin_corner_count >= 3:
+                is_tspin = True
+
             for pos in shape_pos:
                 p = (pos[0], pos[1])
                 locked_positions[p] = current_piece.color
+
             current_piece = next_piece.pop(0)
             next_piece.append(get_shape(bag))
             change_piece = False
             was_holding = False
-            score += score_from_clearing((clear_rows(grid, locked_positions)))
+            score += score_from_clearing((clear_rows(grid, locked_positions)), is_tspin)
+            is_tspin = False
 
         draw_window(win, grid, score, last_score)
         draw_next_shape(next_piece, win)
         if held_piece:
             draw_hold(held_piece, win)
+        draw_cleared_line_indicator()
         pygame.display.update()
 
         if check_lost(locked_positions):
