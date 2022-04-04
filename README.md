@@ -14,11 +14,14 @@ change log in 3 Apr 2022:
 -hold system bug fix
 -soft drop slight improvement
 
+change log in 5 Apr 2022
+-back to back
+-combo
+-display line clear indicator
 
 
 to be implemented:
--back to back
--combo
 -scoring according to speed
--display line clear indicator
 -wall kicks
+-soft drop & hard drop scoring
+-ghost piece
