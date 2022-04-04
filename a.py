@@ -245,30 +245,54 @@ def clear_rows(grid, locked):
     return inc
 
 
-def score_from_clearing(number_of_cleared_lines, tspin_bool):
+def score_from_clearing(number_of_cleared_lines, tspin_bool, btb_count, combo_count):
     temp_score = 0
+    text = ""
     if tspin_bool:
         if number_of_cleared_lines >= 3:   # t-spin triple
             temp_score += 1600
+            btb_count += 1
+            text += "T-Spin Triple"
         elif number_of_cleared_lines == 2:  # t-spin double
             temp_score += 1200
+            btb_count += 1
+            text += "T-Spin Double"
         elif number_of_cleared_lines == 1:  # t-spin single
             temp_score += 800
+            btb_count += 1
+            text += "T-Spin Single"
         else:                               # non-clearing t-spin
             temp_score += 400
+            text += "T-Spin"
     else:  # not a t-spin
         if number_of_cleared_lines >= 4:   # tetris
             temp_score += 800
+            btb_count += 1
+            text += "Tetris"
         elif number_of_cleared_lines == 3:  # triple
             temp_score += 500
+            btb_count = 0
+            text += "Triple"
         elif number_of_cleared_lines == 2:  # double
             temp_score += 300
+            btb_count = 0
+            text += "Double"
         elif number_of_cleared_lines == 1: # single
             temp_score += 100
+            btb_count = 0
+            text += "Single"
         else:
             pass
 
-    return temp_score
+    if number_of_cleared_lines >= 1:
+        temp_score += combo_count * 50
+        text += f"\nCombo: {combo_count+1}"
+
+    if btb_count >= 2 and number_of_cleared_lines >= 1:
+        temp_score *= 1.5
+        text += "\nBack-to-back"
+
+    return int(temp_score), btb_count, text, number_of_cleared_lines
 
 
 def draw_next_shape(shape: list, surface):
@@ -317,8 +341,17 @@ def draw_hold(shape, surface):
 
     surface.blit(label, (sx + 10, sy - 30))
 
-def draw_cleared_line_indicator():
-    pass
+
+def draw_cleared_line_indicator(surface, text=""):
+    font = pygame.font.SysFont('comicsans', 20)
+    text2 = text.split("\n")
+    for i, line in enumerate(text2):
+        label = font.render(line, 1, (255,255,255))
+
+        sx = top_left_x - 150
+        sy = top_left_y + 400 + (25*i)
+
+        surface.blit(label, (sx, sy))
 
 
 def update_score(nscore):
@@ -393,12 +426,14 @@ def main(win):
     fall_time = 0
     fall_speed = 0.7
     level_time = 0
+    clear_line_display_time = 0
     score = 0
     counting_before_locking = 0
 
     is_tspin = False
     btb_count = 0  # back to back
     combo = 0
+    text_for_line_clear = ""
 
     while run:
         grid = create_grid(locked_positions)
@@ -466,7 +501,6 @@ def main(win):
                             current_piece.x, current_piece.y = 5, 0
                             was_holding = True
 
-
         shape_pos = convert_shape_format(current_piece)
 
         for i in range(len(shape_pos)):
@@ -506,14 +540,25 @@ def main(win):
             next_piece.append(get_shape(bag))
             change_piece = False
             was_holding = False
-            score += score_from_clearing((clear_rows(grid, locked_positions)), is_tspin)
+            unpacked_score, btb_count, text_for_line_clear, lc_number = \
+                score_from_clearing((clear_rows(grid, locked_positions)), is_tspin, btb_count, combo)
+            if lc_number > 0:
+                combo += 1
+            else:
+                combo = 0
+            score += unpacked_score
+            print(score, text_for_line_clear)
+            clear_line_display_time = 0
+
             is_tspin = False
 
         draw_window(win, grid, score, last_score)
         draw_next_shape(next_piece, win)
         if held_piece:
             draw_hold(held_piece, win)
-        draw_cleared_line_indicator()
+        clear_line_display_time += clock.get_rawtime()
+        if clear_line_display_time/1000 < 3:
+            draw_cleared_line_indicator(win, text_for_line_clear)
         pygame.display.update()
 
         if check_lost(locked_positions):
