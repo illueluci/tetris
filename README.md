@@ -18,10 +18,11 @@ change log in 5 Apr 2022
 -back to back
 -combo
 -display line clear indicator
+-wall kicks
 
 
 to be implemented:
 -scoring according to speed
--wall kicks
 -soft drop & hard drop scoring
 -ghost piece
+-bug found : if line clear skips a line, grid is floating
