@@ -10,7 +10,7 @@ change log in 2 Apr 2022:
 -scoring update (single, double, triple, tetris). no t-spin yet
 
 change log in 3 Apr 2022:
--T-spin system (3 corner method) + and some bug fix
+-T-spin system (3 corner method) + and some bug fix. (because it's just 3 corner method, the t-spin is so generous lol)
 -hold system bug fix
 -soft drop slight improvement
 
@@ -25,4 +25,9 @@ to be implemented:
 -scoring according to speed
 -soft drop & hard drop scoring
 -ghost piece
--bug found : if line clear skips a line, grid is floating
+
+
+bug found :
+-if line clear skips a line, grid is floating
+-sometimes wall kick fails?
+-instant game over if piece hangs above y=0 (to the left or to the right)
