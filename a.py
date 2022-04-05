@@ -134,7 +134,7 @@ T = [['.....',
       '.....']]
 
 shapes = [S, Z, I, O, J, L, T]
-shape_colors = [(0, 255, 0), (255, 0, 0), (0, 255, 255), (255, 255, 0), (255, 165, 0), (0, 0, 255), (128, 0, 128)]
+shape_colors = [(0, 255, 0), (255, 0, 0), (0, 255, 255), (255, 255, 0),  (0, 0, 255), (255, 165, 0), (128, 0, 128)]
 # index 0 - 6 represent shape
 
 
@@ -407,6 +407,62 @@ def draw_window(surface, grid, score=0, last_score=0):
     draw_grid(surface, grid)
 
 
+def wall_kick_cw(piece: Piece, grid):
+    if piece.shape == O:
+        wall_kick_table = {1: [(0, 0)],
+                           2: [(0, 0)],
+                           3: [(0, 0)],
+                           0: [(0, 0)], }
+    elif piece.shape == I:
+        wall_kick_table = {1: [(-2, 0), ( 1, 0), (-2, 1), ( 1,-2)],
+                           2: [(-1, 0), ( 2, 0), (-1,-2), ( 2, 1)],
+                           3: [( 2, 0), (-1, 0), ( 2,-1), (-1, 2)],
+                           0: [( 1, 0), (-2, 0), ( 1, 2), (-2,-1)], }
+    else:   # J, L, S, T, Z
+        wall_kick_table = {1: [(-1, 0), (-1,-1), (0, 2), (-1, 2)],
+                           2: [( 1, 0), ( 1, 1), (0,-2), ( 1,-2)],
+                           3: [( 1, 0), ( 1,-1), (0, 2), ( 1, 2)],
+                           0: [(-1, 0), (-1, 1), (0,-2), (-1,-2)], }
+
+    for x, y in wall_kick_table[piece.rotation % 4]:
+        piece.x += x
+        piece.y += y
+        if valid_space(piece, grid):
+            break
+        piece.x -= x
+        piece.y -= y
+    else:
+        piece.rotation -= 1
+
+
+def wall_kick_ccw(piece: Piece, grid):
+    if piece.shape == O:
+        wall_kick_table = {0: [(0, 0)],
+                           1: [(0, 0)],
+                           2: [(0, 0)],
+                           3: [(0, 0)], }
+    elif piece.shape == I:
+        wall_kick_table = {0: [(-2, 0), ( 1, 0), (-2, 1), ( 1,-2)],
+                           1: [(-1, 0), ( 2, 0), (-1,-2), ( 2, 1)],
+                           2: [( 2, 0), (-1, 0), ( 2,-1), (-1, 2)],
+                           3: [( 1, 0), (-2, 0), ( 1, 2), (-2,-1)], }
+    else:   # J, L, S, T, Z
+        wall_kick_table = {0: [(-1, 0), (-1,-1), (0, 2), (-1, 2)],
+                           1: [( 1, 0), ( 1, 1), (0,-2), ( 1,-2)],
+                           2: [( 1, 0), ( 1,-1), (0, 2), ( 1, 2)],
+                           3: [(-1, 0), (-1, 1), (0,-2), (-1,-2)], }
+
+    for x, y in wall_kick_table[piece.rotation % 4]:
+        piece.x += -x
+        piece.y += -y
+        if valid_space(piece, grid):
+            break
+        piece.x -= -x
+        piece.y -= -y
+    else:
+        piece.rotation += 1
+
+
 def main(win):
     last_score = max_score()
     locked_positions = {}
@@ -424,11 +480,12 @@ def main(win):
 
     clock = pygame.time.Clock()
     fall_time = 0
-    fall_speed = 0.7
+    fall_speed = 1.0
     level_time = 0
     clear_line_display_time = 0
     score = 0
     counting_before_locking = 0
+    LOCK_LIMIT = 5
 
     is_tspin = False
     btb_count = 0  # back to back
@@ -452,7 +509,7 @@ def main(win):
             if not(valid_space(current_piece, grid)) and current_piece.y > 0:
                 counting_before_locking += 1
                 current_piece.y -= 1
-                if counting_before_locking > 3:
+                if counting_before_locking > LOCK_LIMIT:
                     change_piece = True
                     counting_before_locking = 0
 
@@ -474,21 +531,21 @@ def main(win):
                     current_piece.y += 1
                     if not (valid_space(current_piece, grid)):
                         current_piece.y -= 1
-                        counting_before_locking = 4
+                        counting_before_locking = LOCK_LIMIT + 1
                 if event.key == pygame.K_w:  # hard drop
                     while valid_space(current_piece, grid):
                         current_piece.y += 1
                     if not (valid_space(current_piece, grid)):
                         current_piece.y -= 1
-                        counting_before_locking = 4
+                        counting_before_locking = LOCK_LIMIT + 1
                 if event.key == pygame.K_RIGHT:  # rotate clockwise
                     current_piece.rotation += 1
                     if not (valid_space(current_piece, grid)):
-                        current_piece.rotation -= 1
+                        wall_kick_cw(current_piece, grid)
                 if event.key == pygame.K_DOWN:  # rotate counterclockwise
                     current_piece.rotation -= 1
                     if not (valid_space(current_piece, grid)):
-                        current_piece.rotation += 1
+                        wall_kick_ccw(current_piece, grid)
                 if event.key == pygame.K_q:  # hold
                     if not held_piece:
                         held_piece = current_piece
